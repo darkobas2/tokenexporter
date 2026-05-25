@@ -52,10 +52,22 @@ func tokenCaller(address common.Address) (*MainCaller, error) {
 //
 // Fetch ETH balance from Geth server
 func GetTokenBalance(token, address string, decimals int) string {
-	caller, _ := tokenCaller(common.HexToAddress(token))
-	balance, _ := caller.BalanceOf(nil, common.HexToAddress(address))
-	corrected := ToDecimals(balance, decimals)
-	return corrected
+	caller, err := tokenCaller(common.HexToAddress(token))
+	if err != nil || caller == nil {
+		return "0"
+	}
+	var balance *big.Int
+	for attempt := 0; attempt < 2; attempt++ {
+		balance, err = caller.BalanceOf(nil, common.HexToAddress(address))
+		if err == nil && balance != nil {
+			break
+		}
+		time.Sleep(150 * time.Millisecond)
+	}
+	if err != nil || balance == nil {
+		return "0"
+	}
+	return ToDecimals(balance, decimals)
 }
 
 
@@ -104,6 +116,9 @@ func exp_func(x int, y int64) (value *big.Int) {
 //
 // CONVERT USING THE DECIMALS
 func ToDecimals(o *big.Int, decimals int) string{
+    if o == nil {
+        return "0"
+    }
     if o.String()=="0" {
         return "0"
     }
